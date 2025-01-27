@@ -20,13 +20,14 @@ class Contact {
     required this.photoUrl,
   });
 
-  factory Contact.fromJson(Map<String, dynamic> json) {
+  factory Contact.fromJson(Map<dynamic, dynamic> json) {
+    print(json['status']);
     return Contact(
       firstName: json['firstName'],
       lastName: json['lastName'],
       email: json['email'],
       phone: json['phone'],
-      status: Status.values[json['status']],
+      status: Status.values.firstWhere((e) => e.name == json['status'], orElse: () => Status.NORMAL),
       location: Location.fromJson(json['location']),
       photoUrl: json['photoUrl'],
     );

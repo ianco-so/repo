@@ -1,18 +1,18 @@
 // A location has an latitude and logitude values
 
 class Location {
-  final double latitude;
-  final double longitude;
+  final String latitude;
+  final String longitude;
 
   const Location({
     required this.latitude,
     required this.longitude,
   });
 
-  factory Location.fromJson(Map<String, dynamic> json) {
+  factory Location.fromJson(Map<dynamic, dynamic> json) {
     return Location(
-      latitude: json['latitude'],
-      longitude: json['longitude'],
+      latitude: json['latitude'].toString(),
+      longitude: json['longitude'].toString(),
     );
   }
 }

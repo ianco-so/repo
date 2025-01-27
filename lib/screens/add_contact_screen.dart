@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:repo/services/image_store_service.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:firebase_database/firebase_database.dart';
+
 import '../models/contact.dart';
 import '../models/location.dart';
 import '../models/status.dart';
-import 'package:firebase_database/firebase_database.dart';
-
 import '../services/image_picker_service.dart';
+import '../services/image_store_service.dart';
+import '../utils/location_util.dart';
+import '../screens/map_screen.dart';
 
 class AddContactScreen extends StatefulWidget {
   @override
@@ -19,13 +22,85 @@ class _AddContactScreenState extends State<AddContactScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   String _photoUrl = '';
+  LatLng? _selectedLocation;
+  String? _staticMapUrl;
+
+  void _selectLocation(LatLng location) {
+    setState(() {
+      _selectedLocation = location;
+      _staticMapUrl = LocationUtil.generateLocationPreviewImage(
+        latitude: location.latitude,
+        longitude: location.longitude,
+      );
+    });
+  }
+
+  Future<void> _selectOnMap() async {
+    final LatLng? selectedPosition = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => MapScreen(),
+      ),
+    );
+
+    if (selectedPosition != null) {
+      _selectLocation(selectedPosition);
+    }
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate() || _selectedLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Por favor, preencha todos os campos e selecione um local!')),
+      );
+      return;
+    }
+
+    final contact = Contact(
+      firstName: _firstNameController.text,
+      lastName: _lastNameController.text,
+      phone: _phoneController.text,
+      email: _emailController.text,
+      status: Status.NORMAL,
+      photoUrl: _photoUrl,
+      location: Location(
+        latitude: _selectedLocation!.latitude.toString(),
+        longitude: _selectedLocation!.longitude.toString(),
+      ),
+    );
+
+    try {
+      final dbRef = FirebaseDatabase.instance.ref().child('contacts');
+      await dbRef.push().set({
+        'firstName': contact.firstName,
+        'lastName': contact.lastName,
+        'phone': contact.phone,
+        'email': contact.email,
+        'status': contact.status.name,
+        'photoUrl': contact.photoUrl,
+        'location': {
+          'latitude': contact.location.latitude,
+          'longitude': contact.location.longitude,
+        },
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Contato salvo com sucesso!')),
+      );
+
+      Navigator.of(context).pop();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao salvar contato: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Adicionar Contato')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
@@ -33,8 +108,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
               TextFormField(
                 controller: _firstNameController,
                 decoration: InputDecoration(labelText: 'Nome'),
-                validator: (value) =>
-                    value!.isEmpty ? 'Por favor, insira um nome.' : null,
+                validator: (value) => value!.isEmpty ? 'Por favor, insira um nome.' : null,
               ),
               TextFormField(
                 controller: _lastNameController,
@@ -73,50 +147,22 @@ class _AddContactScreenState extends State<AddContactScreen> {
               ),
               if (_photoUrl.isNotEmpty)
                 Image.network(_photoUrl, height: 100, width: 100),
+              SizedBox(height: 10),
+              ElevatedButton.icon(
+                icon: Icon(Icons.map),
+                label: Text('Selecione no Mapa'),
+                onPressed: _selectOnMap,
+              ),
+              if (_staticMapUrl != null)
+                Container(
+                  height: 150,
+                  width: double.infinity,
+                  decoration: BoxDecoration(border: Border.all(width: 1, color: Colors.grey)),
+                  child: Image.network(_staticMapUrl!, fit: BoxFit.cover),
+                ),
               ElevatedButton(
                 child: Text('Salvar'),
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    final contact = Contact(
-                      firstName: _firstNameController.text,
-                      lastName: _lastNameController.text,
-                      phone: _phoneController.text,
-                      email: _emailController.text,
-                      status: Status.NORMAL,
-                      photoUrl: _photoUrl,
-                      location: Location(latitude: 0, longitude: 0),
-                    );
-
-                    try {
-                      // Referência ao Firebase Realtime Database
-                      DatabaseReference dbRef = FirebaseDatabase.instance.ref().child('contacts');
-                      await dbRef.push().set({
-                        'firstName': contact.firstName,
-                        'lastName': contact.lastName,
-                        'phone': contact.phone,
-                        'email': contact.email,
-                        'status': contact.status.name,
-                        'photoUrl': contact.photoUrl,
-                        'location': {
-                          'latitude': contact.location.latitude,
-                          'longitude': contact.location.longitude,
-                        },
-                      });
-
-                      // Exibe uma mensagem de sucesso
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Contato salvo com sucesso!')),
-                      );
-
-                      Navigator.of(context).pop(); // Retorna para a tela anterior
-                    } catch (e) {
-                      // Trata erros
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao salvar contato: $e')),
-                      );
-                    }
-                  }
-                },
+                onPressed: _submitForm,
               ),
             ],
           ),
