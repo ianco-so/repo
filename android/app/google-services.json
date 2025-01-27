@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "800065756855",
+    "firebase_url": "https://repo-6313b-default-rtdb.firebaseio.com",
+    "project_id": "repo-6313b",
+    "storage_bucket": "repo-6313b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:800065756855:android:6eec938cc765f813977732",
+        "android_client_info": {
+          "package_name": "com.example.repo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxgxM0uhbgXM9cRxXgwuw-SGYPor-e5bk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
