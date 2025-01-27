@@ -1,110 +1,208 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'firebase_options.dart';
+import 'models/contact.dart';
+import 'models/status.dart';
+import 'models/location.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: UploadImageScreen(),
+      title: 'Minha Agenda',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: ContactTabs(),
     );
   }
 }
 
-class UploadImageScreen extends StatefulWidget {
-  const UploadImageScreen({super.key});
-
+class ContactTabs extends StatefulWidget {
   @override
-  _UploadImageScreenState createState() => _UploadImageScreenState();
+  _ContactTabsState createState() => _ContactTabsState();
 }
 
-class _UploadImageScreenState extends State<UploadImageScreen> {
-  final ImagePicker _picker = ImagePicker();
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
+class _ContactTabsState extends State<ContactTabs> {
+  final List<Contact> _contacts = [];
 
-  bool _isUploading = false;
-  String? _uploadedImageUrl;
-
-  Future<void> _captureAndUploadImage() async {
-    try {
-      // Captura a imagem usando a câmera
-      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
-      if (pickedFile == null) return;
-
-      File imageFile = File(pickedFile.path);
-
-      setState(() {
-        _isUploading = true;
-      });
-
-      // Upload para o Firebase Storage
-      String fileName = DateTime.now().millisecondsSinceEpoch.toString();
-      Reference storageRef = _storage.ref().child('images/$fileName');
-      await storageRef.putFile(imageFile);
-
-      // Obter URL da imagem
-      String imageUrl = await storageRef.getDownloadURL();
-
-      // Salvar URL no Firebase Realtime Database
-      DatabaseReference dbRef = _database.ref().child('images');
-      await dbRef.push().set({'url': imageUrl});
-
-      setState(() {
-        _uploadedImageUrl = imageUrl;
-        _isUploading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Imagem enviada com sucesso!')),
-      );
-    } catch (e) {
-      setState(() {
-        _isUploading = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar imagem: $e')),
-      );
-    }
+  void _addContact(Contact contact) {
+    setState(() {
+      _contacts.add(contact);
+    });
+    // Save to Firebase
+    DatabaseReference dbRef = FirebaseDatabase.instance.ref().child('contacts');
+    dbRef.push().set({
+      'firstName': contact.firstName,
+      'lastName': contact.lastName,
+      'email': contact.email,
+      'phone': contact.phone,
+      'status': contact.status.index,
+      'photoUrl': contact.photoUrl,
+    });
   }
+
+  void _showStudentInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Informações do Aluno'),
+        content: Text('Nome: João Silva\nMatrícula: 2023123456'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Fechar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Minha Agenda'),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.info),
+              onPressed: () => _showStudentInfo(context),
+            ),
+          ],
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Todos'),
+              Tab(text: 'Favoritos'),
+              Tab(text: 'Bloqueados'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            ContactList(_contacts, Status.NORMAL),
+            ContactList(_contacts, Status.FAVORITE),
+            ContactList(_contacts, Status.BLOCKED),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          child: Icon(Icons.add),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddContactScreen(onAddContact: _addContact),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class ContactList extends StatelessWidget {
+  final List<Contact> contacts;
+  final Status status;
+
+  ContactList(this.contacts, this.status);
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredContacts = contacts.where((c) => c.status == status).toList();
+
+    return ListView.builder(
+      itemCount: filteredContacts.length,
+      itemBuilder: (ctx, index) {
+        final contact = filteredContacts[index];
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundImage: contact.photoUrl.isNotEmpty
+                ? NetworkImage(contact.photoUrl)
+                : null,
+            child: contact.photoUrl.isEmpty ? Icon(Icons.person) : null,
+          ),
+          title: Text(contact.firstName + ' ' + contact.lastName),
+          subtitle: Text(contact.phone),
+        );
+      },
+    );
+  }
+}
+
+class AddContactScreen extends StatelessWidget {
+  final Function(Contact) onAddContact;
+
+  AddContactScreen({required this.onAddContact});
+
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _phoneController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Teste Firebase Storage'),
+        title: Text('Adicionar Contato'),
       ),
-      body: Center(
-        child: _isUploading
-            ? CircularProgressIndicator()
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: _captureAndUploadImage,
-                    child: Text('Tirar Foto e Enviar'),
-                  ),
-                  if (_uploadedImageUrl != null) ...[
-                    SizedBox(height: 20),
-                    Text('Imagem Enviada:', style: TextStyle(fontSize: 16)),
-                    SizedBox(height: 10),
-                    Image.network(_uploadedImageUrl!, height: 200),
-                  ],
-                ],
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _firstNameController,
+                decoration: InputDecoration(labelText: 'Nome'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Por favor, insira um nome.';
+                  }
+                  return null;
+                },
               ),
+              TextFormField(
+                controller: _lastNameController,
+                decoration: InputDecoration(labelText: 'Sobrenome'),
+              ),
+              TextFormField(
+                controller: _phoneController,
+                decoration: InputDecoration(labelText: 'Telefone'),
+                keyboardType: TextInputType.phone,
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                child: Text('Salvar'),
+                onPressed: () {
+                  if (_formKey.currentState!.validate()) {
+                    onAddContact(Contact(
+                      firstName: _firstNameController.text,
+                      lastName: _lastNameController.text,
+                      phone: _phoneController.text,
+                      email: '',
+                      status: Status.NORMAL,
+                      photoUrl: '', 
+                      location: Location(latitude: 0, longitude: 0),
+                    ));
+                    Navigator.of(context).pop();
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
