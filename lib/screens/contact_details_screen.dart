@@ -86,6 +86,12 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
     }
   }
 
+  void _updateStatus(Status newStatus) {
+    setState(() {
+      _contact.status = newStatus;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,56 +154,105 @@ class _ContactDetailScreenState extends State<ContactDetailScreen> {
                   keyboardType: TextInputType.phone,
                   onSaved: (value) => _contact.phone = value!,
                 ),
-              GestureDetector(
-                onTap: !_isEditing ? _sendEmail : null,
-                child: TextFormField(
+              if (_isEditing)
+                TextFormField(
                   initialValue: _contact.email,
                   decoration: InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
-                  enabled: false,
-                  style: TextStyle(
-                    decoration: !_isEditing ? TextDecoration.underline : null,
-                    color: !_isEditing ? Colors.blue : Colors.black,
-                  ),
+                  onSaved: (value) => _contact.email = value!,
                 ),
-              ),
               SizedBox(height: 16),
               if (_isEditing)
                 ElevatedButton(
                   child: Text('Mudar Localização'),
                   onPressed: _updateLocation,
                 ),
-              Wrap(
-                spacing: 10,
-                runSpacing: 5,
-                children: [
-                  if (_contact.location.latitude.isNotEmpty)
-                    Text(
-                      'Lat: ${_contact.location.latitude}, Long: ${_contact.location.longitude}',
-                      overflow: TextOverflow.ellipsis,
+              SizedBox(height: 16),
+              if (_isEditing)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    if (_contact.status != Status.FAVORITE)
+                      ElevatedButton(
+                        onPressed: () => _updateStatus(Status.FAVORITE),
+                        child: Text('Favoritar'),
+                      ),
+                    if (_contact.status != Status.NORMAL)
+                      ElevatedButton(
+                        onPressed: () => _updateStatus(Status.NORMAL),
+                        child: Text('Normal'),
+                      ),
+                    if (_contact.status != Status.BLOCKED)
+                      ElevatedButton(
+                        onPressed: () => _updateStatus(Status.BLOCKED),
+                        child: Text('Bloquear'),
+                      ),
+                  ],
+                ),
+              if (!_isEditing)
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 5,
+                  children: [
+                    if (_contact.location.latitude.isNotEmpty)
+                      Text(
+                        'Lat: ${_contact.location.latitude}, Long: ${_contact.location.longitude}',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 14),
+                      ),
+                  ],
+                ),
+                SizedBox(height: 10),
+              if (!_isEditing)
+                FutureBuilder<String>(
+                  future: LocationUtil.getAddressFromCoordinates(
+                    double.parse(_contact.location.latitude),
+                    double.parse(_contact.location.longitude),
+                  ),
+                  builder: (ctx, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Text('Carregando endereço...', style: TextStyle(fontSize: 14));
+                    } else if (snapshot.hasError) {
+                      return Text('Erro ao carregar endereço', style: TextStyle(color: Colors.red, fontSize: 14));
+                    } else {
+                      return Text(
+                        'Endereço: ${snapshot.data}',
+                        style: TextStyle(fontSize: 14),
+                      );
+                    }
+                  },
+                ),
+                SizedBox(height: 10),
+              if (!_isEditing)
+                // show email
+                Row(
+                  children: [
+                    Text (
+                      'Email: ${_contact.email}',
                       style: TextStyle(fontSize: 14),
                     ),
-                ],
-              ),
-              SizedBox(height: 10),
-              FutureBuilder<String>(
-                future: LocationUtil.getAddressFromCoordinates(
-                  double.parse(_contact.location.latitude),
-                  double.parse(_contact.location.longitude),
+                    SizedBox(width: 10),
+                    IconButton(
+                      icon: Icon(Icons.email),
+                      onPressed: _sendEmail,
+                    ),
+                  ],
                 ),
-                builder: (ctx, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Text('Carregando endereço...', style: TextStyle(fontSize: 14));
-                  } else if (snapshot.hasError) {
-                    return Text('Erro ao carregar endereço', style: TextStyle(color: Colors.red, fontSize: 14));
-                  } else {
-                    return Text(
-                      'Endereço: ${snapshot.data}',
-                      style: TextStyle(fontSize: 14),
-                    );
-                  }
-                },
-              ),
+                SizedBox(height: 10),
+              if (!_isEditing)
+                // show phone
+                Text (
+                  'Telefone: ${_contact.phone}',
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 10),
+              if (!_isEditing)
+                // show status
+                Text (
+                  'Status: ${_contact.status.toString().split('.').last}',
+                  style: TextStyle(fontSize: 14),
+                ),
+
             ],
           ),
         ),
