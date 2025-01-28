@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../provider/contacts_provider.dart';
 import '../models/status.dart';
+import '../screens/contact_details_screen.dart';
 
 class ContactList extends StatefulWidget {
   final Status status;
@@ -72,6 +73,16 @@ class _ContactListState extends State<ContactList> {
                       subtitle: Text(contact.phone),
                       onTap: () {
                         // Navegar para detalhes do contato
+                        // Navigator.of(context).pushNamed(
+                        //   '/contact-details',
+                        //   arguments: contactKey,
+                        // );
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (ctx) => ContactDetailScreen(contactKey: contactKey),
+                            ),
+                          );
+
                       },
                     ),
                   );

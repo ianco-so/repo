@@ -21,7 +21,7 @@ class Contact {
   });
 
   factory Contact.fromJson(Map<dynamic, dynamic> json) {
-    print(json['status']);
+    // print(json['status']);
     return Contact(
       firstName: json['firstName'],
       lastName: json['lastName'],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// import 'package:repo/screens/contact_details_screen.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -26,6 +27,9 @@ class MyApp extends StatelessWidget {
         title: 'Minha Agenda',
         theme: ThemeData(primarySwatch: Colors.blue),
         home: ContactTabs(),
+        // routes: {
+        //   '/contact-details': (ctx) => ContactDetailScreen(contactKey: ''),
+        // }
       ),
     );
   }

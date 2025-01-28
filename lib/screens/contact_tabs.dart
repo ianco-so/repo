@@ -55,7 +55,7 @@ class _ContactTabsState extends State<ContactTabs> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Informações do Aluno'),
-        content: Text('Nome: João Silva\nMatrícula: 2023123456'),
+        content: Text('Nome: Ianco Soares\nMatrícula: 20210054067'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
